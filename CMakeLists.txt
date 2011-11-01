@@ -93,7 +93,8 @@ if(MIDILIB_HDRS AND MIDILIB)
   include_directories(${MIDILIB_HDRS})
   message(STATUS "Midi library at: ${MIDILIB}")
 else()
-  message(FATAL_ERROR "Midi library not found")
+  message(FATAL_ERROR "Midi library not found, please download it with:")
+  message(FATAL_ERROR "git clone https://github.com/jdkoftinoff/jdksmidi.git")
 endif()
 ##########################################################################
 # Library and utility creation

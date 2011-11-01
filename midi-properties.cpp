@@ -19,7 +19,7 @@ void readTrack(const MIDITrack& track) {
   int numEvents = track.GetNumEvents();
   vector<vector<unsigned long> > activeNotesPerChannel(16);
   for (int i = 0; i < 16; i++)
-    activeNotesPerChannel[i].reserve(200);
+    activeNotesPerChannel[i].resize(200,0);
 
   std::cout << "There are " << numEvents << " events " << std::endl;
     
@@ -30,28 +30,28 @@ void readTrack(const MIDITrack& track) {
       int channel = (int)event->GetChannel();
       int note = (int)event->GetNote();
       MIDIClockTime startTime = event->GetTime();
-      std::cerr << "Note On " << channel << " " << note << std::endl;
-     
-      assert(activeNotesPerChannel.at(channel).at(note) == 0);
-      //assert(noteOn == false);
-      //noteOn = true;
+      //std::cerr << "Note On " << channel << " " << note << std::endl;
+      //assert(activeNotesPerChannel.at(channel).at(note) == 0);
+      activeNotesPerChannel[channel][note] = startTime;
     }
    
     if (event->IsNoteOff()) {
+      //std::cout << EventAsText(*event) << std::endl; 
       int channel = (int)event->GetChannel();
       int note = (int)event->GetNote();
       MIDIClockTime stopTime = event->GetTime();
-
-  
-      //std::cout << "Note Off " << ((int)event->GetNote()) << std::endl; 
-      //assert(noteOn == true);
-      //noteOn = false;
+      //assert(activeNotesPerChannel.at(channel).at(note) != 0);
+      unsigned long onset = activeNotesPerChannel.at(channel).at(note);
+      unsigned long duration = stopTime - onset;
+      std::cout << "This should be a triple: " << note << " " << onset << " " << duration << std::endl; 
+      // do something here and then restore to zero
+      activeNotesPerChannel[channel][note] = 0;
     }
   }
 }
 void readTracks(const MIDIMultiTrack& tracks) {
   int numTracks = tracks.GetNumTracks();
-  std::cout << "There are " << numTracks << std::endl; 
+  //std::cout << "There are " << numTracks << std::endl; 
   for (int i = 0; i < numTracks; i++)
     readTrack(*(tracks.GetTrack(i)));
 }
