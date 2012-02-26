@@ -1,0 +1,22 @@
+diff --git a/magic.mk b/magic.mk
+index 797c8dd..9d52b09 100644
+--- a/magic.mk
++++ b/magic.mk
+@@ -156,7 +156,7 @@ LINK_FLAGS+=-cxxlib -lstdc++ -lm -lsvml
+ endif
+ 
+ ifeq ($(COMPILER),gcc)
+-CXX=$(COMPILER_PREFIX)g++
++CXX=$(COMPILER_PREFIX)clang++ -stdlib=libc++
+ CC=$(COMPILER_PREFIX)gcc
+ AR=$(COMPILER_PREFIX)ar
+ RANLIB=$(COMPILER_PREFIX)ranlib
+@@ -165,7 +165,7 @@ LINK.c?=$(CC)
+ endif
+ 
+ ifeq ($(CROSS_COMPILING),1)
+-NATIVE_CXX=g++
++NATIVE_CXX=clang++ -stdlib=libc++
+ NATIVE_CC=gcc
+ NATIVE_AR=ar
+ NATIVE_RANLIB=ranlib
