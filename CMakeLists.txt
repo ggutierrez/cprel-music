@@ -21,3 +21,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 add_executable(midi-properties midi-properties.cpp)
 target_link_libraries(midi-properties midi_lib)
+
+add_executable(midi-extractor midi-extractor.cpp)
+target_link_libraries(midi-extractor midi_lib)
