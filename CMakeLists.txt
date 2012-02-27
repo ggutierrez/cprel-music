@@ -16,11 +16,13 @@ include_directories(${MIDI_HDR})
 ##########################################################################
 # Library and utility creation
 ##########################################################################
-
 include_directories(${CMAKE_SOURCE_DIR})
 
-add_executable(midi-properties midi-properties.cpp)
-target_link_libraries(midi-properties midi_lib)
+add_library(miditransform transformer.cpp)
+target_link_libraries(miditransform midi_lib)
+
+#add_executable(midi-properties midi-properties.cpp)
+#target_link_libraries(midi-properties midi_lib)
 
 add_executable(midi-extractor midi-extractor.cpp)
-target_link_libraries(midi-extractor midi_lib)
+target_link_libraries(midi-extractor miditransform)
