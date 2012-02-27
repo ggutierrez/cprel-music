@@ -14,6 +14,16 @@ find_package(Compiler)
 find_package(Jdksmidi)
 include_directories(${MIDI_HDR})
 ##########################################################################
+# Detection of the constraint library
+##########################################################################
+find_package(Cprel)
+include_directories(${CPREL_HDRS})
+##########################################################################
+# Summary information
+##########################################################################
+#message(STATUS "Summary")
+#message(STATUS "  Constraint library: ${CPREL_LIBS}")
+##########################################################################
 # Library and utility creation
 ##########################################################################
 include_directories(${CMAKE_SOURCE_DIR})
@@ -25,4 +35,4 @@ target_link_libraries(miditransform midi_lib)
 #target_link_libraries(midi-properties midi_lib)
 
 add_executable(midi-extractor midi-extractor.cpp)
-target_link_libraries(midi-extractor miditransform)
+target_link_libraries(midi-extractor miditransform ${CPREL_LIBS})
