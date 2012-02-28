@@ -36,3 +36,6 @@ target_link_libraries(miditransform midi_lib)
 
 add_executable(midi-extractor midi-extractor.cpp)
 target_link_libraries(midi-extractor miditransform ${CPREL_LIBS})
+
+add_executable(canon canon.cpp)
+target_link_libraries(canon miditransform ${CPREL_LIBS})
