@@ -15,7 +15,7 @@ class MidiAsRelation : public MidiTransformer {
 private:
   MPG::GRelation midiRel_;
   // maps pitch -> startTime
-  map<int,int> startTime;
+  std::map<int,int> startTime;
 public:
   MidiAsRelation(const char* fname)
   : MidiTransformer(fname), midiRel_(4)
@@ -31,7 +31,7 @@ public:
     */
     if (noteOn) {
       assert(startTime.count(note) == 0);
-      startTime.insert({note,tm});
+      startTime.insert(std::make_tuple(note,tm));
     } else {
       assert(startTime.count(note) == 1);
       int start = startTime.at(note);
@@ -116,6 +116,8 @@ public:
     os << std::endl << std::endl 
        << "Relation: " << std::endl
        << S.glb() << std::endl;
+    // some other test
+    
   }
   Canon(bool share, Canon& s)
     : Gecode::Space(share,s) {
