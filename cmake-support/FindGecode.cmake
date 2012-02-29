@@ -75,4 +75,10 @@ if(GECODE_FOUND)
   list(LENGTH GECODE_LINE_CPREL_CLASS GECODE_CPREL_SUPPORT)
 endif()
 
+if (GECODE_GIST_LIBRARY)
+  find_package(Qt4 REQUIRED QtCore QtGui)
+  include(${QT_USE_FILE})
+  list(APPEND Gecode_LIBRARIES ${QT_LIBRARIES})  
+endif()
+
 
