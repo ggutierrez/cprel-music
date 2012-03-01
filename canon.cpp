@@ -59,21 +59,76 @@ GRelation makeSumRelation(void) {
 class Canon : public Gecode::Space {
 protected:
   // Initial score
-  CPRelVar v0;
+  CPRelVar v0_;
   // Voice 1
-  CPRelVar v1;
+  CPRelVar v1_;
   // Resultant score
-  CPRelVar S;
-  CPRelVar offset;
-  CPRelVar pp;
-  GRelation consonant;
+  CPRelVar S_;
+  CPRelVar offset_;
+  //CPRelVar pp;
+  GRelation cons_;
 
-  CPRelVar debug;
+  //  CPRelVar debug_;
+  /**
+   * \brief Given two variables \a v and \a f posts the constraint that
+   * f is a follower voice of v by an onset offset \a o
+   */
+  void followVoice(CPRelVar v, CPRelVar f, CPRelVar o) {
+    // offeset x times : <track,duration,pitch,onset> x <dt>
+    //                -> <track,duration,pitch,onset,dt>
+    CPRelVar times_offset(*this,GRelation(5),GRelation::create_full(5));
+    join(*this,v,0,o,times_offset);
+    
+    // plus: <x,y,z> : x + y = z
+    GRelation plus = makeSumRelation();
+    CPRelVar plusVar(*this,plus,plus);
+
+    //CPRelVar tmp(*this,GRelation(4),GRelation::create_full(4));
+    follow(*this,times_offset,2,plusVar,f);
+  }
+  /**
+   * \brief The score \a s must be harminc with respect to \a cons
+   */
+  void consonant(CPRelVar s, GRelation cons) {
+    // From S: <track,duration,pitch,onset>, get <pitch,onset>
+    CPRelVar pitch_onset(*this,GRelation(2),GRelation::create_full(2));
+    projection(*this, 2, s, pitch_onset);
+
+    // From pitch_onset: <pitch,onset> get <onset,pitch>
+    CPRelVar onset_pitch(*this,GRelation(2),GRelation::create_full(2));
+    PermDescriptor perm_pitch_onset;
+    perm_pitch_onset.permute(0, 1);
+    permutation(*this, pitch_onset, onset_pitch, perm_pitch_onset);
+
+    // Take all the pitches that occur at the same onset in a relation: <pitch,pitch> 
+    // pp : <pitch,pitch>      
+    //CPRelVar 
+    CPRelVar pp(*this,GRelation(2),GRelation::create_full(2));
+    follow(*this, pitch_onset, 1, onset_pitch, pp);
+
+    // There is a big difference between the voices being consonants and
+    // the voices only containing consonant notes
+    //CPRelVar nonConsonantV(*this,consonant.complement(),consonant.complement());
+    CPRelVar consonantV(*this,cons,cons);
+    //disjoint(*this,pp,nonConsonantV);
+    subset(*this,pp,consonantV);
+    // <track,duration,pitch,onset> -- <onset,pitch> = <track,duration,pitch,pitch>
+  }
+  /// Create a consonant relation from the pitches of score \a s
+  static GRelation isConsonant(GRelation s) {
+    GRelation s_pitch_onset = s.project(2);
+    
+    PermDescriptor perm_pitch_onset;
+    perm_pitch_onset.permute(0, 1);
+
+    GRelation s_onset_pitch = s_pitch_onset.permute(perm_pitch_onset);
+    return s_pitch_onset.follow(1, s_onset_pitch);
+  }
 public:
   Canon(void) = delete;
   /// Constructor from an input score
   Canon(const char* inputScore, GRelation c) 
-  : consonant(c) {
+  : cons_(c) {
     {
       // The lower bound is the relation representing the input score
       MidiAsRelation reader(inputScore);
@@ -83,82 +138,41 @@ public:
       GRelation ub = GRelation::create_full(4);
 
       // V0: <track,duration,pitch,onset>
-      v0 = CPRelVar(*this,lb,ub);
+      v0_ = CPRelVar(*this,lb,ub);
     }
     {
-      GRelation lb(1);
-      lb.add(Tuple(50));
-
-      GRelation ub(1); //= GRelation::create_full(1);
-      //ub.add(Tuple(0));
-      //ub.add(Tuple(500));
+      GRelation lb(1); lb.add(Tuple(90));
+      GRelation ub(1); 
       // Offset: <dt>
-      offset = CPRelVar(*this,lb,ub.Union(lb));
+      offset_ = CPRelVar(*this,lb,ub.Union(lb));
     }
     {
       GRelation lb(4);
       GRelation ub = GRelation::create_full(4);
       // V1: <track,duration,pitch,onset>
-      v1 = CPRelVar(*this,lb,ub);
+      v1_ = CPRelVar(*this,lb,ub);
     }
-    {
-      // S: <track,duration,pitch,onset>
-      S = CPRelVar(*this,GRelation(4),GRelation::create_full(4));
-    }
-    // plus: <x,y,z> : x + y = z
-    GRelation plus = makeSumRelation();
-    {
-      //GRelation x = v0.glb().join(0,offset.glb()).follow(2,plus);
-      //cout << x << endl;
-    }
-    {
-      // This block of constraints enforces that v1 is a follower voice of v0
-      // offeset x times : <track,duration,pitch,onset> x <dt>
-      //                -> <track,duration,pitch,onset,dt>
-      CPRelVar times(*this,GRelation(5),GRelation::create_full(5));
-      join(*this,v0,0,offset,times);
-      CPRelVar plusVar(*this,plus,plus);
+    // v1 follows v0 by offset
+    followVoice(v0_, v1_, offset_);
 
-      CPRelVar tmp(*this,GRelation(4),GRelation::create_full(4));
-      follow(*this,times,2,plusVar,tmp);
-      subset(*this, v1, tmp);
-    }
+    // S: <track,duration,pitch,onset>
+    S_ = CPRelVar(*this,GRelation(4),GRelation::create_full(4));
+          
     {
       // Both voices must be part of the final score
-      //Union(*this,v0,v1,S);
-      equal(*this,v1,S);
+      subset(*this,v0_,S_);
+      subset(*this,v1_,S_);
     }
-    {
-      // The final score must be consonant
+    // we consider the main voice to be consonant
+    GRelation least_consonant = isConsonant(v0_.glb());
+    // this is not really needed
+    consonant(v0_, least_consonant);
 
-      // From S: <track,duration,pitch,onset>, get <pitch,onset>
-      CPRelVar pitch_onset(*this,GRelation(2),GRelation::create_full(2));
-      projection(*this, 2, S, pitch_onset);
+    // the resulting score is harmonic
+    consonant(S_,least_consonant);
 
-      // From pitch_onset: <pitch,onset> get <onset,pitch>
-      CPRelVar onset_pitch(*this,GRelation(2),GRelation::create_full(2));
-      PermDescriptor perm_pitch_onset;
-      perm_pitch_onset.permute(0, 1);
-      permutation(*this, pitch_onset, onset_pitch, perm_pitch_onset);
-
-      // Take all the pitches that occur at the same onset in a relation: <pitch,pitch> 
-      // pp : <pitch,pitch>      
-      //CPRelVar 
-      pp = CPRelVar(*this,GRelation(2),GRelation::create_full(2));
-      follow(*this, pitch_onset, 1, onset_pitch, pp);
-
-      // There is a big difference between the voices being consonants and
-      // the voices only containing consonant notes
-      //CPRelVar nonConsonantV(*this,consonant.complement(),consonant.complement());
-      CPRelVar consonantV(*this,consonant,consonant);
-      //disjoint(*this,pp,nonConsonantV);
-      //subset(*this,pp,consonantV);
-      // <track,duration,pitch,onset> -- <onset,pitch> = <track,duration,pitch,pitch>
-
-    }
-    //CPRelVar pp(*this,GRelation(5),GRelation::create_full(5));
-    branch(*this,offset);
-    //branch(*this,v0);
+    // Find suitable offsets for the problem
+    branch(*this,offset_);
   }
   virtual void constrain(const Gecode::Space&) {
 
@@ -166,21 +180,19 @@ public:
   void print(std::ostream& os) const {
     os << std::endl << std::endl 
        << "Relation: " << std::endl
-       << pp.lub() //.intersect(consonant) 
-      // << S.lub()
-       //<< S.lub().intersect(v0.glb())
-       //<< S << std::endl;
-    // some other test
+       //<< v0_.glb().project(2) << std::endl
+       //<< v1_.glb().project(2) << std::endl
+       << S_.glb()
     << std::endl;
   }
   Canon(bool share, Canon& s)
-    : Gecode::Space(share,s), consonant(s.consonant)
+    : Gecode::Space(share,s), cons_(s.cons_)
   {
-    v0.update(*this, share, s.v0);
-    v1.update(*this, share, s.v1);
-    S.update(*this, share, s.S);
-    offset.update(*this,share,s.offset);
-    pp.update(*this,share,s.pp);
+    v0_.update(*this, share, s.v0_);
+    v1_.update(*this, share, s.v1_);
+    S_.update(*this, share, s.S_);
+    offset_.update(*this,share,s.offset_);
+    //pp.update(*this,share,s.pp);
     //debug.update(*this,share,s.debug);
   }
   virtual Space* copy(bool share) {
@@ -204,10 +216,9 @@ int main(int, char** argv) {
   if (s) {
     cout << "A solution!!!" << endl;
     static_cast<Canon*>(s)->print(std::cout);
+    delete s;
   }
-  delete s;
   delete g;
-  
 /*  
   Gist::Print<Canon> p("Print solution");
   Gist::Options o;
